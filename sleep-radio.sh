@@ -1,16 +1,10 @@
 #!/bin/bash
 
-# Opens a file or streaming site with MPV and slowly increases the volume.
-# Set the file or site to open in wakeup-radio-file.txt, or provide a file name as argument.
-# Set a crontab to specify when it should run, and keep the computer on.
-# Example crontab:
-#  # Wakeup radio weekdays at 7AM
-#  00 07 * * 1-5 bash -l -c "/home/user/bin/wakeup-radio.sh &>/home/oubj/bin/wakeup-radio.log"
-#  # Wakeup radio weekends at 9AM
-#  00 09 * * 6-7 bash -l -c "/home/user/bin/wakeup-radio.sh &>/home/oubj/bin/wakeup-radio.log"
+# Opens a file or streaming site with MPV and slowly decreases the volume.
+# Set the file or site to open in sleep-radio-file.txt, or provide a file name as argument.
 
 echo
-echo "Wake Up Radio"
+echo "Sleep Radio"
 echo "It is $(date)"
 export XDG_RUNTIME_DIR=/run/user/1000
 
@@ -28,7 +22,7 @@ echo
 echo "Running from $DIR"
 
 # Get file to read, or use default
-default=wakeup-radio-file.txt
+default=sleep-radio-file.txt
 echo
 if [ -f "$1" ]; then
     file=$1
@@ -59,26 +53,24 @@ echo "Will play $site"
 # Set initial volume
 echo
 echo "Setting volume"
-pactl set-sink-volume 0 50%
+pactl set-sink-volume 0 80%
 
 # Play with mpv
 echo
 echo "Playing with mpv"
 mpv -shuffle yes --really-quiet "$site" > /dev/null 2>&1  &
 
-# Increase volume gradually
+# Decrease volume gradually
 echo
-for run in {1..50}
+for run in {1..100}
 do
-    echo "Increasing volume"
-    sleep 30
-    pactl set-sink-volume 0 +1%
+    echo "Decreasing volume"
+    sleep 40
+    pactl set-sink-volume 0 -1%
 done
 
-
 echo
-echo "Waiting"
-sleep 7200
+echo "You should be sleeping now!!"
 
 echo
 echo "Switching off at $(date)"
