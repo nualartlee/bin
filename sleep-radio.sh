@@ -3,6 +3,14 @@
 # Opens a file or streaming site with MPV and slowly decreases the volume.
 # Set the file or site to open in sleep-radio-file.txt, or provide a file name as argument.
 
+# Switch off function
+switch_off () {
+    echo
+    echo "Switching off at $(date)"
+    kill -15 $mpv_pid
+    exit
+}
+
 echo
 echo "Sleep Radio"
 echo "It is $(date)"
@@ -59,6 +67,10 @@ pactl set-sink-volume 0 80%
 echo
 echo "Playing with mpv"
 mpv -shuffle yes --really-quiet "$site" > /dev/null 2>&1  &
+mpv_pid=$!
+
+# Trap signals
+trap "switch_off" 1 2 3 9 15
 
 # Decrease volume gradually
 echo
@@ -69,8 +81,8 @@ do
     pactl set-sink-volume 0 -1%
 done
 
+
+# Normal termination
 echo
 echo "You should be sleeping now!!"
-
-echo
-echo "Switching off at $(date)"
+switch_off

@@ -9,6 +9,14 @@
 #  # Wakeup radio weekends at 9AM
 #  00 09 * * 6-7 bash -l -c "/home/user/bin/wakeup-radio.sh &>/home/oubj/bin/wakeup-radio.log"
 
+# Switch off function
+switch_off () {
+    echo
+    echo "Switching off at $(date)"
+    kill -15 $mpv_pid
+    exit
+}
+
 echo
 echo "Wake Up Radio"
 echo "It is $(date)"
@@ -65,8 +73,12 @@ pactl set-sink-volume 0 50%
 echo
 echo "Playing with mpv"
 mpv -shuffle yes --really-quiet "$site" > /dev/null 2>&1  &
+mpv_pid=$!
 
-# Increase volume gradually
+# Trap signals
+trap "switch_off" 1 2 3 9 15
+
+ Increase volume gradually
 echo
 for run in {1..50}
 do
@@ -82,3 +94,4 @@ sleep 7200
 
 echo
 echo "Switching off at $(date)"
+switch_off
