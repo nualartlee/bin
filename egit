@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+
+##  Encrypted Git ##
+
+#Encrypted copies of all files in the directory are kept in a separate folder.
+#Git tracks the files in the encrypted folder only, so they are safer to share on
+#third party remote git servers.
+#Optionally, the keys are also tracked by git so pull and decryption operations can
+#be done anywhere (no need to carry the key). However, in this case the security
+#depends on the key's encryption and password.
+
+##
+## Settings
+##
+
+# Configuration directory name
+CDIR='.cdir'
+
+# Encrypted directory name (stores all git-tracked encrypted files)
+EDIR='.edir'
+
+# Encryption key file name (contains a symmetric encryption key)
+KEY_FILE_NAME="$CDIR/egit_key"
+
+##
+## Common functions
+##
+
+# Error check function
+# Param 1: return code, pass the last one with $?
+# Param 2: error text to display
+check_errs()
+{
+  if [ "${1}" -ne "0" ]; then
+    echo "ERROR # ${1} : ${2}"
+    exit ${1}
+  fi
+}
+
+# Package exists check function
+# Param 1: name of the package to check
+check_package () {
+
+    install_status=$( dpkg-query -W -f='${Status}' $1)
+    if [ "$install_status" == "install ok installed" ]
+    then
+        echo "$1 installed"
+    else
+        echo "Please install $1 and run this script again"
+        echo
+        exit 1
+    fi
+}
+
+# Password generator function
+# Param 1: file to store the password in
+# Param 2: number of characters to generate
+create_password () {
+    if [ -e $1 ]
+    then
+        echo "$1 already exists"
+    else
+        check_package pwgen
+        printf $(pwgen -s $2 1) >> $1
+        check_errs $? "Falied creating password"
+        echo "$1 created"
+    fi
+    chmod 664 $1
+    check_errs $? "Failed setting password permissions"
+}
+
+
+# Encryption function
+encrypt_file () {
+
+    if [ -f $1 ]
+    then
+        # Set file names
+        FILE=$1
+        DESTINATION=${FILE/\./$EDIR}
+
+        # Create the directory if it does not exist
+        DIR=$(dirname "${DESTINATION}")
+        if [ ! -d "$DIR" ]
+        then
+            mkdir -p $DIR
+        fi
+
+        # Encrypt
+        #echo "Encrypting $FILE to $DESTINATION"
+        # Using openSSL to get a deterministic symmetric encryption
+        #gpg --passphrase $KEY_FILE_NAME --batch --yes --cipher-algo AES256 -o $DESTINATION -ac $FILE
+        openssl enc -a -aes-256-cbc -nosalt -pass file:$KEY_FILE_NAME -in $FILE -out $DESTINATION >/dev/null 2>&1
+        if [ "$?" -ne "0" ]; then
+            echo "Failed encrypting $FILE"
+            #echo "$FILE encrypted"
+        fi
+    fi
+}
+
+# Help info
+print_help () {
+    echo
+    echo "Egit will encrypt local files and track them with git, so you can push them to"
+    echo "third party git servers with some added privacy."
+    echo
+    echo "All files in the working directory will be encrypted and tracked, except those in hidden"
+    echo "directories."
+    echo
+
+}
+##
+## Begin
+##
+echo
+echo "        Encrypted Git"
+echo
+
+#echo "Working in $PWD"
+
+check_package git >/dev/null
+
+# Create config directory if it doesn't exist
+if [ ! -d "$CDIR" ]
+then
+    mkdir $CDIR
+fi
+
+# Create encrypted directory if it doesn't exist
+if [ ! -d "$EDIR" ]
+then
+    mkdir $EDIR
+fi
+
+# Create keys if they don't exist
+if [ ! -e "$KEY_FILE_NAME" ]
+then
+    create_password $KEY_FILE_NAME 121
+fi
+
+# Get all files
+files=`find . -maxdepth 5 -mindepth 1 -type f`
+
+# Encrypt files
+#echo
+#echo encrypting
+echo
+for filename in $files; do
+
+    # Skip files in hidden folders
+    capture="^\./\..+"
+    if [[ $filename =~ $capture ]]
+    then
+        #echo "skipping $filename in hidden folder"
+        continue
+    fi
+    encrypt_file $filename
+
+done
+
+# Check git status
+git diff >/dev/null
+if [ "$?" -ne "0" ]; then
+    echo "Initializing git"
+    git init
+fi
+
+# Add new encrypted files
+git add $EDIR
+
+# Print help
+if [ "$1" == "-h" ]; then
+    print_help
+elif [ "$1" == "--help" ]; then
+    print_help
+fi
+
+# Perform the requested git command
+if [ "$#" -eq 0 ]; then
+    print_help
+    echo
+    echo "No commands provided for git"
+else
+    git "$@"
+fi
+
+# Remove all unencrypted files
+
+# Recreate all files from encrypted versions
