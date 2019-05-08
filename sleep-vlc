@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Switch off function
+switch_off () {
+    echo
+    echo "Switching off at $(date)"
+    killall vlc
+    exit
+}
+
+echo
+echo "Sleep VLC"
+echo "It is $(date)"
+export XDG_RUNTIME_DIR=/run/user/1000
+
+echo
+echo "Stat"
+pactl stat
+
+echo
+echo "Info"
+pactl info
+
+# Set initial volume
+echo
+echo "Setting volume"
+pactl set-sink-volume 0 80%
+
+# Trap signals
+trap "switch_off" 1 2 3 9 15
+
+# Decrease volume gradually
+echo
+for run in {1..100}
+do
+    echo "Decreasing volume"
+    sleep 77
+    pactl set-sink-volume 0 -1%
+done
+
+
+# Normal termination
+echo
+echo "You should be sleeping now!!"
+switch_off
