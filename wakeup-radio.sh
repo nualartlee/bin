@@ -78,7 +78,7 @@ mpv_pid=$!
 # Trap signals
 trap "switch_off" 1 2 3 9 15
 
- Increase volume gradually
+# Increase volume gradually
 echo
 for run in {1..50}
 do
