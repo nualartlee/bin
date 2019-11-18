@@ -61,7 +61,7 @@ echo "Will play $site"
 # Set initial volume
 echo
 echo "Setting volume"
-pactl set-sink-volume 0 80%
+pactl set-sink-volume 1 80%
 
 # Play with mpv
 echo
@@ -78,7 +78,7 @@ for run in {1..100}
 do
     echo "Decreasing volume"
     sleep 77
-    pactl set-sink-volume 0 -1%
+    pactl set-sink-volume 1 -1%
 done
 
 
